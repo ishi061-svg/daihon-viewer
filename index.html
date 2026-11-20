@@ -1,0 +1,1205 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>台本表示ツール</title>
+<!-- ネットにつながっているときだけ読み込まれる太字フォント。つながっていなければ端末の標準ゴシックになる -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@700&family=Noto+Sans+JP:wght@500..900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f4f2;
+    --card: #ffffff;
+    --text: #1d1d1f;
+    --sub: #6b6b70;
+    --accent: #2f6fde;
+    --line: #dcdcdf;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Hiragino Sans", "Noto Sans JP", "Yu Gothic", "Meiryo", sans-serif;
+  }
+
+  /* ===== 編集画面 ===== */
+  #editor { max-width: 900px; margin: 0 auto; padding: 20px 16px 40px; }
+  h1 { font-size: 24px; margin: 4px 0 4px; }
+  .lead { color: var(--sub); margin: 0 0 16px; font-size: 15px; line-height: 1.6; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px; margin-bottom: 16px;
+  }
+  label.title { display: block; font-weight: bold; margin-bottom: 8px; }
+  textarea {
+    width: 100%; min-height: 40vh; font-size: 18px; line-height: 1.7;
+    padding: 12px; border: 1px solid var(--line); border-radius: 8px;
+    font-family: inherit; resize: vertical; color: var(--text); background: #fff;
+  }
+  .hint { font-size: 14px; color: var(--sub); margin-top: 8px; line-height: 1.6; }
+  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  input[type=range] { flex: 1; min-width: 160px; height: 32px; }
+  input[type=text] { font: inherit; font-size: 18px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; width: 140px; }
+  .sizeVal { min-width: 64px; text-align: right; font-weight: bold; }
+  select { font: inherit; font-size: 17px; padding: 10px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--text); width: 100%; }
+  button {
+    font: inherit; font-size: 18px; border-radius: 10px; border: 1px solid var(--line);
+    background: #fff; color: var(--text); padding: 12px 18px; cursor: pointer;
+  }
+  button:disabled { opacity: .5; }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: bold; }
+  .start { width: 100%; font-size: 22px; padding: 18px; }
+  .count { color: var(--sub); font-size: 15px; }
+  /* 台本の入力ボタン */
+  .tools { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  #nameBtns { margin-bottom: 0; }
+  button.tool { font-size: 17px; padding: 10px 14px; }
+  button.tool.name { background: #000; font-weight: bold; border-color: #000; border-radius: 10px 0 0 10px; }
+  .namechip { display: inline-flex; }
+  button.tool.namex { border-radius: 0 10px 10px 0; border-left: none; padding: 10px 12px; color: #888; }
+
+  /* 見本（黒地に実際の文字） */
+  .sample {
+    margin-top: 12px; background: #000; color: #fff; border-radius: 8px; padding: 14px 16px;
+    font-size: 40px; line-height: 1.35; text-align: center; word-break: break-all;
+  }
+
+  /* 人ごとの色 */
+  .who-row {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 10px 0; border-top: 1px solid var(--line);
+  }
+  .who-row:first-child { border-top: none; }
+  .who-name {
+    min-width: 120px; background: #000; border-radius: 8px; padding: 6px 12px;
+    font-size: 22px;
+  }
+  .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+  .sw {
+    width: 44px; height: 44px; border-radius: 50%; padding: 0;
+    border: 3px solid #ccc; position: relative;
+  }
+  .sw.on { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(47,111,222,.35); }
+  .sw.on::after {
+    content: "✓"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: #000; font-weight: bold; font-size: 20px;
+  }
+  .empty { color: var(--sub); font-size: 15px; }
+
+  /* 表示する文字の共通スタイル（フォントは JS で切り替え） */
+  .big {
+    font-family: var(--f-family);
+    font-weight: var(--f-weight);
+    letter-spacing: 0.04em;
+    -webkit-text-stroke: var(--f-stroke, 0) currentColor;
+  }
+
+  /* ===== 表示画面 ===== */
+  #stage {
+    position: fixed; inset: 0; background: #000; color: #fff; display: none;
+    user-select: none; -webkit-user-select: none; touch-action: manipulation;
+  }
+  #stage.show { display: block; }
+  body.playing { overflow: hidden; }
+  #lineBox {
+    position: absolute; left: 0; right: 0; top: 0; bottom: 48px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 1vh 1.5vw; overflow: hidden;
+  }
+  #inner { max-width: 100%; text-align: center; }
+  #inner .item + .item { margin-top: 0.4em; }
+  #inner .who { font-size: 0.45em; line-height: 1.2; margin-bottom: 0.2em; opacity: .9; }
+  /* 名前の座布団（名前の後ろに敷く色つきの板） */
+  #stage.zabuton #inner .who { opacity: 1; margin-bottom: 0.3em; }
+  #stage.zabuton #inner .who span {
+    display: inline-block; background: var(--c); color: #000 !important;
+    padding: 0.08em 0.6em 0.12em; border-radius: 0.3em;
+  }
+  /* 日本語を文節（意味のまとまり）で改行する。対応していないブラウザでは普通の改行になる */
+  #inner .lineText { white-space: pre-wrap; word-break: auto-phrase; overflow-wrap: anywhere; line-height: var(--lh, 1.35); }
+  /* リアルタイム確認ウィンドウ */
+  #pv {
+    position: fixed; right: 12px; bottom: 12px; z-index: 50;
+    width: min(420px, 46vw); background: #222; border-radius: 10px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.35); overflow: hidden;
+  }
+  #pv.big { width: min(760px, 92vw); }
+  #pv.hide { display: none; }
+  #pvHead {
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    padding: 4px 6px; color: #ccc; font-size: 14px;
+  }
+  #pvHead button { background: #333; color: #ddd; border-color: #444; font-size: 14px; padding: 4px 10px; border-radius: 6px; }
+  #pvHead .g { display: flex; gap: 4px; align-items: center; }
+  #pvCanvas { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; background: #000; }
+  #pvOpen {
+    position: fixed; right: 12px; bottom: 12px; z-index: 50; display: none;
+    background: #222; color: #eee; border-color: #444; font-size: 15px; padding: 10px 14px;
+  }
+  #pvOpen.show { display: block; }
+  body.playing #pv, body.playing #pvOpen { display: none; }
+  #editor { padding-bottom: 50vh; }
+  /* 左右の端まで詰める：どこでも改行（句読点は行頭に来ない） */
+  #stage.fill #inner .lineText { word-break: break-all; line-break: strict; }
+  /* 縦向きのときだけ出す案内 */
+  #rotateHint {
+    display: none; position: absolute; top: 40px; left: 0; right: 0; text-align: center;
+    color: #999; font-size: 18px; pointer-events: none;
+  }
+  @media (orientation: portrait) { #rotateHint { display: block; } }
+  #bar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 48px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 0 12px; background: #0b0b0b; color: #888; font-size: 16px;
+  }
+  #bar button { background: #1a1a1a; color: #bbb; border-color: #2a2a2a; padding: 6px 12px; font-size: 16px; }
+  #bar .grp { display: flex; gap: 8px; align-items: center; }
+  #pos { font-variant-numeric: tabular-nums; }
+  #tapHelp {
+    position: absolute; top: 12px; left: 0; right: 0; text-align: center;
+    color: #777; font-size: 16px; pointer-events: none; transition: opacity .6s;
+  }
+</style>
+</head>
+<body>
+
+<!-- 編集画面 -->
+<div id="editor">
+  <h1>台本表示ツール</h1>
+  <p class="lead">台本を貼り付けて「表示を始める」を押すと、1ページずつ大きく表示されます。<br>
+  画面の右側をタップ（または左へスワイプ）で次へ、左側をタップ（または右へスワイプ）で前へ戻ります。</p>
+
+  <div class="card">
+    <label class="title" for="docTitle">番号とタイトル</label>
+    <div class="row" style="gap:8px; margin-bottom:6px; flex-wrap:nowrap;">
+      <input type="number" id="docNo" placeholder="番号" min="0" max="999" inputmode="numeric" style="width:90px; font:inherit; font-size:18px; padding:8px 10px; border:1px solid var(--line); border-radius:8px;" aria-label="番号">
+      <input type="text" id="docTitle" placeholder="例：第1話 出会い" maxlength="40" style="flex:1; width:auto; min-width:0;">
+    </div>
+    <p class="hint" style="margin:0 0 14px;">画像（JPG）で保存するとき、ファイル名と画像の左上に「番号＋タイトル」が入ります。<br>
+    番号は「01」「02」…のように2けたにそろえるので、ファイルを名前順に並べると台本の順番どおりになります。番号は空でもかまいません。</p>
+    <label class="title" for="script">台本</label>
+    <div class="tools" id="tools">
+      <button type="button" class="tool" id="insMark">区切り</button>
+      <button type="button" class="tool" id="insParen">（ ）</button>
+      <span id="nameBtns" class="tools"></span>
+      <button type="button" class="tool" id="delName">この行の名前を外す</button>
+    </div>
+    <div class="row" style="gap:8px; margin-bottom:8px;">
+      <input type="text" id="nameInput" placeholder="名前を入力" maxlength="12" style="flex:1; min-width:140px; max-width:260px;">
+      <button type="button" class="tool" id="addName">名前を追加</button>
+    </div>
+    <p class="hint" style="margin:0 0 8px;" id="toolMsg">名前を入力して「名前を追加」を押すと、その名前のボタンができます。<br>
+    名前のボタンを押すと、カーソル（文字を入れる位置）のある行の先頭に「名前：」が入ります。<br>
+    名前の横の「✕」で、その名前を消せます。</p>
+    <textarea id="script" placeholder="ここに台本を貼り付けます。&#10;&#10;「名前：セリフ」と書くと、人ごとに色を変えられます。&#10;山田：こんにちは、山田です。&#10;鈴木：本日はよろしくお願いします。&#10;&#10;名前「セリフ」の書き方でもOKです。&#10;鈴木「よろしくね」"></textarea>
+    <div class="row" style="margin-top:8px;">
+      <span class="count" id="count">ページ数：0</span>
+    </div>
+    <p class="hint">入力した台本は、このブラウザに自動で保存されます。次に開いたときもそのまま残ります。</p>
+  </div>
+
+  <div class="card">
+    <label class="title" for="splitMode">ページの区切り方</label>
+    <select id="splitMode">
+      <option value="line">1行ごとに1ページ</option>
+      <option value="blank">空行（何も書いていない行）ごとに1ページ</option>
+      <option value="mark">指定した記号ごとに1ページ</option>
+    </select>
+    <div class="row" id="markRow" style="margin-top:10px;">
+      <span>区切りの記号：</span>
+      <input type="text" id="mark" value="---">
+    </div>
+    <p class="hint" id="markHint">
+      例：区切りの記号を「---」にした場合<br>
+      山田：こんにちは。<br>
+      鈴木：よろしくね。<br>
+      ---<br>
+      山田：では始めます。<br>
+      → 「---」の上の2行が1ページ目、下の1行が2ページ目になります。<br>
+      1ページに何人かのセリフがあっても、それぞれの人の色で表示されます。
+    </p>
+  </div>
+
+  <div class="card">
+    <label class="title">人ごとの色</label>
+    <div id="whoList"></div>
+    <p class="hint">黒い背景で見やすい明るい色だけを用意しています。<br>
+    名前のない行（ト書き・ナレーションなど）は白で表示します。<br>
+    ただし、名前つきの行のすぐ下に名前なしの行が続くときは、同じ人のセリフの続きとして同じ色にします（「（」で始まる行は除く）。</p>
+    <label style="font-size:16px; display:block; margin-top:6px;"><input type="checkbox" id="showWho" checked> 名前も表示する</label>
+    <label style="font-size:16px; display:block; margin-top:6px;"><input type="checkbox" id="zabuton" checked> 名前に座布団を敷く（その人の色の板の上に、黒い文字で名前を出す）</label>
+  </div>
+
+  <div class="card">
+    <label class="title" for="font">文字の形と太さ</label>
+    <select id="font">
+      <option value="noto">極太ゴシック（おすすめ：いちばん太い）</option>
+      <option value="ud">UDゴシック（読みまちがえにくい形）</option>
+      <option value="sys">端末の標準ゴシック（極太）</option>
+    </select>
+    <div style="margin-top:14px;">
+      <div style="font-size:16px; margin-bottom:4px;">文字の太さ</div>
+      <div class="row">
+        <span style="font-size:14px;">細め</span>
+        <input type="range" id="weight" min="1" max="5" step="1" value="5">
+        <span style="font-size:14px;">極太</span>
+        <span class="sizeVal" id="weightVal"></span>
+      </div>
+    </div>
+    <div style="margin-top:8px;">
+      <div style="font-size:16px; margin-bottom:4px;">フチ（線をさらに太く見せる）</div>
+      <div class="row">
+        <span style="font-size:14px;">なし</span>
+        <input type="range" id="stroke" min="0" max="4" step="1" value="0">
+        <span style="font-size:14px;">太い</span>
+        <span class="sizeVal" id="strokeVal"></span>
+      </div>
+    </div>
+    <div class="sample" id="sample"></div>
+    <p class="hint">見本の「願」「驚」「鬱」のような画数の多い漢字がつぶれていないか見ながら調整してください。<br>
+    つぶれるときは、まずフチを「なし」に、それでもつぶれるなら太さを1段階下げます。<br>
+    「UDゴシック」は太さが2段階（ふつう・太字）しかありません。<br>
+    「極太ゴシック」「UDゴシック」はネットにつながっているときだけ使えます。つながっていないときは、自動で端末の標準ゴシックになります。</p>
+  </div>
+
+  <div class="card">
+    <label class="title" for="size">文字の大きさ</label>
+    <label style="font-size:17px; display:block; margin-bottom:10px;"><input type="checkbox" id="autoMax" checked> 画面いっぱいに自動で大きくする（おすすめ）</label>
+    <div class="row" id="manualRow">
+      <button type="button" id="sizeDown">小さく</button>
+      <input type="range" id="size" min="30" max="600" step="5" value="90">
+      <button type="button" id="sizeUp">大きく</button>
+      <span class="sizeVal" id="sizeVal">90</span>
+    </div>
+    <p class="hint" id="sizeHint"></p>
+    <div style="font-size:16px; margin:14px 0 4px;">行間（行と行のすき間）</div>
+    <div class="row">
+      <span style="font-size:14px;">せまい</span>
+      <input type="range" id="lineH" min="1.0" max="1.8" step="0.05" value="1.35">
+      <span style="font-size:14px;">広い</span>
+      <span class="sizeVal" id="lineHVal">1.35</span>
+    </div>
+    <p class="hint" style="margin-top:2px;">せまくすると、そのぶん文字を大きくできます。1.0 は行どうしがほぼくっつきます。</p>
+    <div style="font-size:16px; margin:14px 0 4px;">改行のしかた</div>
+    <select id="breakMode">
+      <option value="phrase">言葉の切れ目で改行（読みやすい）</option>
+      <option value="fill">左右の端まで詰める（文字がいちばん大きくなる）</option>
+    </select>
+    <p class="hint">「左右の端まで詰める」にすると、言葉の途中でも改行します（例：「終わら／ない」）。<br>
+    ただし「、」「。」「！」などが行の先頭に来ないようにはしています。</p>
+  </div>
+
+  <button type="button" class="primary start" id="startBtn">表示を始める</button>
+
+  <div class="card" style="margin-top:16px;">
+    <label class="title">画像（JPG）で保存</label>
+    <p class="hint" style="margin-top:0;">1ページを横長（16:9）の画像1枚にして保存します。<br>
+    写真アプリなどで横にめくれば、このツールが開けない機器でも使えます。<br>
+    色・フォント・太さ・フチ・名前の表示は、いまの設定がそのまま使われます。</p>
+    <button type="button" id="jpgBtn" style="width:100%;">全ページをまとめて保存（ZIPファイル）</button>
+    <p class="hint" id="jpgMsg"></p>
+    <p class="hint">ZIP（複数のファイルを1つにまとめたもの）で保存されます。タブレットのファイルアプリで開いて「展開」すると、画像が取り出せます。<br>
+    画像の名前は「01_タイトル_001.jpg」「01_タイトル_002.jpg」… の順番になります（番号が空なら「タイトル_001.jpg」、タイトルも空なら「台本画像_001.jpg」…）。<br>
+    1ページだけ保存したいときは、表示中に下のバーの「この1枚を保存」を押します。</p>
+  </div>
+</div>
+
+<!-- 表示画面 -->
+<!-- リアルタイム確認ウィンドウ -->
+<div id="pv">
+  <div id="pvHead">
+    <span>確認　<span id="pvPos">- / -</span></span>
+    <div class="g">
+      <button type="button" id="pvPrev" aria-label="前のページ">◀</button>
+      <button type="button" id="pvNext" aria-label="次のページ">▶</button>
+      <button type="button" id="pvSize">大きく</button>
+      <button type="button" id="pvClose" aria-label="確認ウィンドウを閉じる">✕</button>
+    </div>
+  </div>
+  <canvas id="pvCanvas" width="1920" height="1080"></canvas>
+</div>
+<button type="button" id="pvOpen">確認ウィンドウを開く</button>
+
+<div id="stage">
+  <div id="tapHelp">右側タップ／左へスワイプ：次へ　　左側タップ／右へスワイプ：前へ</div>
+  <div id="rotateHint">タブレットを横向きにすると、もっと大きく表示できます</div>
+  <div id="lineBox"><div id="inner"></div></div>
+  <div id="bar">
+    <div class="grp"><button type="button" id="backBtn">✕ 戻る</button></div>
+    <div class="grp"><span id="pos">1 / 1</span></div>
+    <div class="grp">
+      <button type="button" id="oneJpgBtn">この1枚を保存</button>
+      <button type="button" id="whoBtn">名前：表示</button>
+      <button type="button" id="aDown">A−</button>
+      <button type="button" id="aUp">A＋</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  // ---- 保存まわり（使えない環境でも止まらないように try で囲む）----
+  function load(key, def) {
+    try { var v = localStorage.getItem(key); return v === null ? def : v; } catch (e) { return def; }
+  }
+  function save(key, val) {
+    try { localStorage.setItem(key, val); } catch (e) {}
+  }
+
+  var $ = function (id) { return document.getElementById(id); };
+  var script = $('script'), size = $('size'), sizeVal = $('sizeVal');
+  var splitMode = $('splitMode'), markInput = $('mark');
+  var stage = $('stage'), lineBox = $('lineBox'), inner = $('inner'), pos = $('pos');
+  var fontSel = $('font'), strokeSl = $('stroke'), weightSl = $('weight'), showWho = $('showWho');
+
+  // 黒い背景で見やすい色（明るく、色どうしも見分けやすいもの）
+  var PALETTE = [
+    { name: '白',     c: '#FFFFFF' },
+    { name: '黄',     c: '#FFE600' },
+    { name: '水色',   c: '#4DD8FF' },
+    { name: '黄緑',   c: '#8CFF5A' },
+    { name: 'ピンク', c: '#FF8AC4' },
+    { name: '赤',     c: '#FF5C5C' },
+    { name: 'オレンジ', c: '#FFA53C' }
+  ];
+  // 名前が出てきた順に自動で割り当てる色（白は名前なしの行用に残しておく）
+  var AUTO = ['#FFE600', '#4DD8FF', '#8CFF5A', '#FF8AC4', '#FFA53C', '#FF5C5C', '#FFFFFF'];
+
+  var FONTS = {
+    noto: { family: '"Noto Sans JP", "Hiragino Sans", "Noto Sans CJK JP", sans-serif' },
+    ud:   { family: '"BIZ UDPGothic", "Noto Sans JP", "Hiragino Sans", sans-serif' },
+    sys:  { family: '"Hiragino Sans", "Noto Sans CJK JP", "Yu Gothic", sans-serif' }
+  };
+  // 太さの段階（1〜5）→ 実際の太さの数値
+  var WEIGHTS = [500, 600, 700, 800, 900];
+  var WEIGHT_NAMES = ['細め', 'ふつう', '太字', 'かなり太い', '極太'];
+  // フチの段階（0〜4）→ 線の太さ（文字の大きさに対する割合）
+  var STROKES = ['0', '0.008em', '0.016em', '0.026em', '0.04em'];
+  var STROKE_NAMES = ['なし', '細い', 'ふつう', 'やや太い', '太い'];
+
+  var colors = {};
+  try { colors = JSON.parse(load('daihon.colors', '{}')) || {}; } catch (e) { colors = {}; }
+
+  script.value = load('daihon.script', '');
+  size.value = load('daihon.size', '90');
+  splitMode.value = load('daihon.split', load('daihon.blank', '0') === '1' ? 'blank' : 'line');
+  markInput.value = load('daihon.mark', '---');
+  fontSel.value = load('daihon.font', 'noto');
+  weightSl.value = load('daihon.weight', '5');
+  strokeSl.value = load('daihon.strokeLv', '0');
+  showWho.checked = load('daihon.showWho', '1') === '1';
+
+  var pages = [], index = 0;
+
+  // ===== 台本をページに分ける =====
+  // 「名前：セリフ」「名前「セリフ」」を見分ける
+  function parseLine(s) {
+    var m = s.match(/^([^\s：:「」]{1,12})\s*[：:]\s*([\s\S]+)$/);
+    if (m) return { who: m[1], text: m[2].trim() };
+    m = s.match(/^([^\s：:「」]{1,12})\s*「([\s\S]*)」$/);
+    if (m) return { who: m[1], text: m[2].trim() };
+    return { who: '', text: s };
+  }
+
+  // 1ページ分の文章 → [{who, text}, ...]
+  function toPage(chunk) {
+    var items = [];
+    chunk.split('\n').map(function (s) { return s.trim(); }).filter(Boolean).forEach(function (ln) {
+      var p = parseLine(ln);
+      var last = items[items.length - 1];
+      // 名前つきの行のすぐ下の名前なしの行は、同じ人のセリフの続きとみなす（「（」で始まるト書きは除く）
+      if (!p.who && last && last.who && !/^[（(]/.test(ln)) last.text += '\n' + ln;
+      else items.push(p);
+    });
+    return items;
+  }
+
+  function splitPages(src) {
+    var text = (typeof src === 'string' ? src : script.value).replace(/\r\n?/g, '\n');
+    var mode = splitMode.value, chunks;
+    if (mode === 'blank') chunks = text.split(/\n\s*\n/);
+    else if (mode === 'mark' && markInput.value.trim()) chunks = text.split(markInput.value.trim());
+    else chunks = text.split('\n');
+    return chunks.map(function (s) { return s.trim(); }).filter(Boolean).map(toPage)
+                 .filter(function (p) { return p.length > 0; });
+  }
+
+  function speakers(list) {
+    var seen = [];
+    list.forEach(function (pg) { pg.forEach(function (l) { if (l.who && seen.indexOf(l.who) < 0) seen.push(l.who); }); });
+    return seen;
+  }
+
+  // まだ色が決まっていない人に、順番に色を割り当てる
+  function ensureColors(names) {
+    var used = names.map(function (n) { return colors[n]; }).filter(Boolean);
+    names.forEach(function (n) {
+      if (colors[n]) return;
+      var pick = AUTO.filter(function (c) { return used.indexOf(c) < 0; })[0] || AUTO[0];
+      colors[n] = pick; used.push(pick);
+    });
+    save('daihon.colors', JSON.stringify(colors));
+  }
+
+  function colorOf(who) { return who ? (colors[who] || '#FFFFFF') : '#FFFFFF'; }
+
+  // ===== 台本の入力ボタン =====
+  var extraNames = [];   // 「＋名前を追加」で足した、まだ台本に出てこない名前
+  try { extraNames = JSON.parse(load('daihon.extraNames', '[]')) || []; } catch (e) { extraNames = []; }
+
+  function toolMsg(s) { $('toolMsg').textContent = s; }
+
+  // カーソルの位置に文字を入れる（選んでいる文字があれば置きかえる）
+  function insertText(text, cursorBack) {
+    var s = script.selectionStart, e = script.selectionEnd;
+    script.setRangeText(text, s, e, 'end');
+    if (cursorBack) { var p = script.selectionEnd - cursorBack; script.setSelectionRange(p, p); }
+    script.focus();
+    script.dispatchEvent(new Event('input'));
+  }
+
+  // カーソルのある行の頭を「名前：」にする（すでに名前があれば入れかえる）
+  function setLineName(name) {
+    var v = script.value, s = script.selectionStart;
+    var ls = v.lastIndexOf('\n', s - 1) + 1;
+    var le = v.indexOf('\n', s); if (le < 0) le = v.length;
+    var line = v.slice(ls, le);
+    var p = parseLine(line.trim());
+    var body = p.who ? p.text : line.replace(/^\s+/, '');
+    var newLine = name ? name + '：' + body : body;
+    script.setRangeText(newLine, ls, le, 'end');
+    script.focus();
+    script.dispatchEvent(new Event('input'));
+  }
+
+  function renderNameBtns(names) {
+    var all = names.slice();
+    extraNames.forEach(function (n) { if (all.indexOf(n) < 0) all.push(n); });
+    ensureColors(all);
+    var box = $('nameBtns');
+    box.innerHTML = '';
+    all.forEach(function (n) {
+      var chip = document.createElement('span'); chip.className = 'namechip';
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'tool name big';
+      b.textContent = n; b.style.color = colorOf(n);
+      b.addEventListener('mousedown', function (e) { e.preventDefault(); });
+      b.addEventListener('click', function () { setLineName(n); });
+      var x = document.createElement('button');
+      x.type = 'button'; x.className = 'tool namex'; x.textContent = '✕';
+      x.title = '「' + n + '」を消す'; x.setAttribute('aria-label', '「' + n + '」を消す');
+      x.addEventListener('mousedown', function (e) { e.preventDefault(); });
+      x.addEventListener('click', function () { removeName(n, names.indexOf(n) >= 0); });
+      chip.appendChild(b); chip.appendChild(x);
+      box.appendChild(chip);
+    });
+  }
+
+  // 名前を消す。台本の中で使っていれば、確認してから台本の「名前：」も外す
+  function removeName(n, used) {
+    if (used) {
+      if (!confirm('「' + n + '」は台本の中で使われています。\n台本の中の「' + n + '：」も外して、名前を消しますか？\n（セリフの文章は残ります）')) return;
+      script.value = script.value.split('\n').map(function (line) {
+        var p = parseLine(line.trim());
+        return p.who === n ? p.text : line;
+      }).join('\n');
+      save('daihon.script', script.value);
+      onScriptChanged();
+    }
+    extraNames = extraNames.filter(function (x) { return x !== n; });
+    save('daihon.extraNames', JSON.stringify(extraNames));
+    renderWhoList();
+    toolMsg('「' + n + '」を消しました。');
+  }
+
+  function renderWhoList() {
+    var names = speakers(splitPages());
+    var inScript = names.slice();
+    renderNameBtns(names);
+    names = names.concat(extraNames.filter(function (n) { return names.indexOf(n) < 0; }));
+    ensureColors(names);
+    var box = $('whoList');
+    box.innerHTML = '';
+    if (names.length === 0) {
+      box.innerHTML = '<div class="empty">台本に「名前：セリフ」の形の行があると、ここに名前が出て色を選べます。</div>';
+      return;
+    }
+    names.forEach(function (n) {
+      var row = document.createElement('div'); row.className = 'who-row';
+      var label = document.createElement('div'); label.className = 'who-name big';
+      label.textContent = n; label.style.color = colorOf(n);
+      var sws = document.createElement('div'); sws.className = 'swatches';
+      PALETTE.forEach(function (p) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'sw' + (colors[n] === p.c ? ' on' : '');
+        b.style.background = p.c; b.title = p.name; b.setAttribute('aria-label', n + 'の色を' + p.name + 'にする');
+        b.addEventListener('click', function () {
+          colors[n] = p.c; save('daihon.colors', JSON.stringify(colors)); renderWhoList();
+        });
+        sws.appendChild(b);
+      });
+      row.appendChild(label); row.appendChild(sws);
+      // 台本にまだ出てこない、追加しただけの名前は外せるようにする
+      if (inScript.indexOf(n) < 0) {
+        var rm = document.createElement('button');
+        rm.type = 'button'; rm.textContent = '外す'; rm.style.fontSize = '15px'; rm.style.padding = '8px 12px';
+        rm.addEventListener('click', function () {
+          extraNames = extraNames.filter(function (x) { return x !== n; });
+          save('daihon.extraNames', JSON.stringify(extraNames));
+          renderWhoList();
+        });
+        row.appendChild(rm);
+      }
+      box.appendChild(row);
+    });
+  }
+
+  // ===== 見た目の設定 =====
+  function currentFont() {
+    var f = FONTS[fontSel.value] || FONTS.noto;
+    var wLv = parseInt(weightSl.value, 10) || 5, sLv = parseInt(strokeSl.value, 10) || 0;
+    var w = WEIGHTS[wLv - 1];
+    if (fontSel.value === 'ud') w = w >= 700 ? 700 : 400;   // UDゴシックは2段階だけ
+    return { family: f.family, weight: w, stroke: STROKES[sLv], strokeEm: parseFloat(STROKES[sLv]) || 0, wLv: wLv, sLv: sLv };
+  }
+
+  function applyFont() {
+    var f = currentFont();
+    document.documentElement.style.setProperty('--f-family', f.family);
+    document.documentElement.style.setProperty('--f-weight', f.weight);
+    document.documentElement.style.setProperty('--f-stroke', f.stroke);
+    $('weightVal').textContent = WEIGHT_NAMES[f.wLv - 1];
+    $('strokeVal').textContent = STROKE_NAMES[f.sLv];
+    var s = $('sample');
+    s.innerHTML = '';
+    var t = document.createElement('span'); t.className = 'big';
+    t.textContent = 'お願い 驚く 鬱 見本 Ab12'; s.appendChild(t);
+    if (stage.classList.contains('show')) fit();
+  }
+
+  function updateSplitUI() {
+    var isMark = splitMode.value === 'mark';
+    $('markRow').style.display = isMark ? 'flex' : 'none';
+    $('markHint').style.display = isMark ? 'block' : 'none';
+  }
+
+  function updateCount() {
+    $('count').textContent = 'ページ数：' + splitPages().length;
+  }
+
+  function setSize(v) {
+    v = Math.max(30, Math.min(600, Math.round(v / 5) * 5));
+    size.value = v;
+    sizeVal.textContent = v;
+    save('daihon.size', String(v));
+    if (stage.classList.contains('show')) render();
+  }
+
+  function updateSizeUI() {
+    var auto = $('autoMax').checked;
+    $('manualRow').style.opacity = auto ? '.4' : '1';
+    size.disabled = auto; $('sizeDown').disabled = auto; $('sizeUp').disabled = auto;
+    $('sizeHint').innerHTML = auto
+      ? '文章の長さに合わせて、画面の端まで入るいちばん大きな文字にします。短いセリフほど大きくなります。<br>表示中に「A−」「A＋」を押すと、自分で大きさを決めるモードに切り替わります。'
+      : '文章が長くて画面に入りきらないときは、自動で少し小さくして全部見えるようにします。<br>表示中も、下のバーの「A−」「A＋」で変えられます。';
+  }
+
+  // 表示中の「A−」「A＋」：自動モードなら、いまの大きさを基準に手動モードへ切り替える
+  var lastFs = 90;
+  function bumpSize(d) {
+    if ($('autoMax').checked) {
+      $('autoMax').checked = false; save('daihon.auto', '0'); updateSizeUI();
+      setSize(lastFs + d);
+    } else {
+      setSize(parseInt(size.value, 10) + d);
+    }
+  }
+
+  // ===== 表示画面 =====
+  function fit() {
+    var cs = getComputedStyle(lineBox);
+    var maxW = lineBox.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    var maxH = lineBox.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    function setFs(px) { inner.style.fontSize = px + 'px'; }
+    // 小数点以下の誤差で「入らない」と判定されないよう 1px の余裕をみる
+    function fits() { return inner.scrollHeight <= maxH + 1 && inner.scrollWidth <= maxW + 1; }
+    var fs;
+    if ($('autoMax').checked) {
+      // 入るいちばん大きな大きさを探す（半分ずつしぼりこむ）
+      var lo = 12, hi = Math.ceil(Math.max(maxW, maxH));
+      while (hi - lo > 1) {
+        var mid = (lo + hi) >> 1;
+        setFs(mid);
+        if (fits()) lo = mid; else hi = mid;
+      }
+      fs = lo;
+      setFs(fs);
+    } else {
+      // 画面に入りきるまで文字を小さくする
+      fs = parseInt(size.value, 10);
+      setFs(fs);
+      while (fs > 16 && !fits()) { fs -= 4; setFs(fs); }
+    }
+    lastFs = fs;
+  }
+
+  function render() {
+    if (pages.length === 0) return;
+    inner.innerHTML = '';
+    pages[index].forEach(function (l) {
+      var c = colorOf(l.who);
+      var item = document.createElement('div'); item.className = 'item';
+      if (l.who && showWho.checked) {
+        var w = document.createElement('div'); w.className = 'who big';
+        var ws = document.createElement('span');
+        ws.textContent = l.who; ws.style.setProperty('--c', c);
+        w.style.color = c; w.appendChild(ws); item.appendChild(w);
+      }
+      var t = document.createElement('div'); t.className = 'lineText big';
+      t.textContent = l.text; t.style.color = c; item.appendChild(t);
+      inner.appendChild(item);
+    });
+    pos.textContent = (index + 1) + ' / ' + pages.length;
+    fit();
+  }
+
+  function go(step) {
+    var n = index + step;
+    if (n < 0 || n >= pages.length) return;
+    index = n;
+    save('daihon.index', String(index));
+    render();
+  }
+
+  // 画面を暗くしない（対応している環境だけ）
+  var wakeLock = null;
+  function keepAwake() {
+    try {
+      if (navigator.wakeLock) navigator.wakeLock.request('screen').then(function (w) { wakeLock = w; }).catch(function () {});
+    } catch (e) {}
+  }
+
+  function start() {
+    pages = splitPages();
+    if (pages.length === 0) { alert('台本が空です。先に台本を貼り付けてください。'); return; }
+    ensureColors(speakers(pages));
+    index = parseInt(load('daihon.index', '0'), 10) || 0;
+    if (index >= pages.length) index = 0;
+    if (index > 0 && !confirm((index + 1) + 'ページ目から続けますか？\n（「キャンセル」で最初から）')) index = 0;
+    stage.classList.add('show');
+    document.body.classList.add('playing');
+    $('tapHelp').style.opacity = '1';
+    setTimeout(function () { $('tapHelp').style.opacity = '0'; }, 3000);
+    // 全画面にして、横向きに固定する（Androidのブラウザで使える。iPadなどでは手で横にする）
+    function lockLandscape() {
+      try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(function () {}); } catch (e) {}
+    }
+    try {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().then(lockLandscape).catch(function () {});
+      }
+    } catch (e) {}
+    keepAwake();
+    render();
+  }
+
+  function stop() {
+    stage.classList.remove('show');
+    document.body.classList.remove('playing');
+    try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch (e) {}
+    try { if (document.fullscreenElement) document.exitFullscreen(); } catch (e) {}
+    try { if (wakeLock) wakeLock.release(); } catch (e) {}
+    wakeLock = null;
+  }
+
+  // ===== JPG 画像の書き出し =====
+  var IMG_W = 1920, IMG_H = 1080;
+
+  // 文を「言葉のまとまり」に分ける（句読点や閉じかっこは前にくっつける）
+  var NO_START = /^[、。，．,.！？!?）」』】〉》ー…ぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ]/;
+  function segments(text) {
+    var out = [];
+    if ($('breakMode').value === 'fill') {
+      out = Array.from(text);   // 端まで詰める：1文字ずつ
+    } else {
+      try {
+        var seg = new Intl.Segmenter('ja', { granularity: 'word' });
+        for (var it of seg.segment(text)) out.push(it.segment);
+      } catch (e) { out = Array.from(text); }
+    }
+    var merged = [];
+    out.forEach(function (s) {
+      if (merged.length && NO_START.test(s)) merged[merged.length - 1] += s;
+      else merged.push(s);
+    });
+    return merged;
+  }
+
+  // 幅に収まるように行を分ける
+  function wrap(ctx, text, maxW) {
+    var lines = [];
+    text.split('\n').forEach(function (para) {
+      var line = '';
+      segments(para).forEach(function (s) {
+        if (line === '' || ctx.measureText(line + s).width <= maxW) {
+          if (ctx.measureText(line + s).width > maxW) {
+            // 1つのまとまりだけで幅を超えるときは1文字ずつ分ける
+            Array.from(s).forEach(function (ch) {
+              if (line !== '' && ctx.measureText(line + ch).width > maxW) { lines.push(line); line = ''; }
+              line += ch;
+            });
+          } else {
+            line += s;
+          }
+        } else {
+          lines.push(line.replace(/\s+$/, ''));
+          line = s.replace(/^\s+/, '');
+        }
+      });
+      lines.push(line);
+    });
+    return lines;
+  }
+
+  function drawPage(ctx, page, no, total) {
+    var f = currentFont();
+    // 上はタイトル、下はページ番号のぶんだけ少しあける
+    var padX = 30, padTop = 64, padBottom = 56, maxW = IMG_W - padX * 2, maxH = IMG_H - padTop - padBottom;
+    var auto = $('autoMax').checked;
+    var fs = Math.min(420, Math.round(parseInt(size.value, 10) * 1.35));
+
+    function setFont(px) {
+      ctx.font = f.weight + ' ' + px + 'px ' + f.family;
+      try { ctx.letterSpacing = (px * 0.04) + 'px'; } catch (e) {}
+    }
+    // 文字の大きさ fs のときの並べ方を計算する
+    function layout(fs) {
+      var out = [], h = 0, widest = 0, nameFs = Math.max(20, Math.round(fs * 0.45));
+      page.forEach(function (l, i) {
+        if (i > 0) h += fs * 0.4;
+        if (l.who && showWho.checked) {
+          setFont(nameFs);
+          var zab = $('zabuton').checked;
+          widest = Math.max(widest, ctx.measureText(l.who).width + (zab ? nameFs * 1.2 : 0));
+          var nh = zab ? nameFs * 1.65 : nameFs * 1.4;
+          out.push({ kind: 'name', text: l.who, color: colorOf(l.who), fs: nameFs, h: nh, zab: zab });
+          h += nh;
+        }
+        setFont(fs);
+        wrap(ctx, l.text, maxW).forEach(function (s) {
+          widest = Math.max(widest, ctx.measureText(s).width);
+          out.push({ kind: 'text', text: s, color: colorOf(l.who), fs: fs, h: fs * lineH() });
+          h += fs * lineH();
+        });
+        out[out.length - 1].gapAfter = true;
+      });
+      return { blocks: out, h: h, w: widest };
+    }
+    var lay;
+    function ok(l) { return l.h <= maxH && l.w <= maxW; }
+    if (auto) {
+      // 入るいちばん大きな大きさを探す
+      var lo = 12, hi = IMG_H;
+      while (hi - lo > 1) {
+        var mid = (lo + hi) >> 1;
+        if (ok(layout(mid))) lo = mid; else hi = mid;
+      }
+      fs = lo;
+      lay = layout(fs);
+    } else {
+      // 入りきるまで小さくする
+      while (true) {
+        lay = layout(fs);
+        if (ok(lay) || fs <= 24) break;
+        fs -= 6;
+      }
+    }
+
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, IMG_W, IMG_H);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
+
+    var y = padTop + (maxH - lay.h) / 2;
+    lay.blocks.forEach(function (b) {
+      setFont(b.fs);
+      ctx.fillStyle = b.color; ctx.strokeStyle = b.color;
+      ctx.globalAlpha = b.kind === 'name' ? 0.9 : 1;
+      var cy = y + b.h / 2;
+      if (b.kind === 'text' && f.strokeEm > 0) { ctx.lineWidth = b.fs * f.strokeEm; ctx.strokeText(b.text, IMG_W / 2, cy); }
+      if (b.zab) {
+        // 座布団：その人の色の角丸の板を敷いて、名前は黒で書く
+        var tw = ctx.measureText(b.text).width, bw = tw + b.fs * 1.2, bh = b.fs * 1.32;
+        var bx = IMG_W / 2 - bw / 2, by = cy - bh / 2, r = b.fs * 0.3;
+        ctx.globalAlpha = 1;
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, r); else ctx.rect(bx, by, bw, bh);
+        ctx.fill();
+        ctx.fillStyle = '#000';
+        // 文字の実際の形（上端・下端）を測って、板のちょうど真ん中に置く
+        ctx.textBaseline = 'alphabetic';
+        var mm = ctx.measureText(b.text);
+        var ty = cy + (mm.actualBoundingBoxAscent - mm.actualBoundingBoxDescent) / 2;
+        ctx.fillText(b.text, IMG_W / 2, ty);
+        ctx.textBaseline = 'middle';
+        y += b.h;
+        if (b.gapAfter) y += fs * 0.4;
+        return;
+      }
+      ctx.fillText(b.text, IMG_W / 2, cy);
+      y += b.h;
+      if (b.gapAfter) y += fs * 0.4;
+    });
+    ctx.globalAlpha = 1;
+
+    // 右下に小さくページ番号
+    ctx.font = '400 28px sans-serif';
+    try { ctx.letterSpacing = '0px'; } catch (e) {}
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#555';
+    ctx.fillText(no + ' / ' + total, IMG_W - 30, IMG_H - 30);
+
+    // 左上に小さくタイトル
+    var title = [docNoText(), $('docTitle').value.trim()].filter(Boolean).join('  ');
+    if (title) {
+      ctx.font = '700 32px ' + f.family;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#777';
+      ctx.fillText(title, 30, 34);
+    }
+  }
+
+  // ファイル名に使えない文字を取りのぞいたタイトル（空なら「台本画像」）
+  // 番号を2けた（100以上は3けた）にそろえる。空なら ''
+  function docNoText() {
+    var v = $('docNo').value.trim();
+    if (v === '' || isNaN(parseInt(v, 10))) return '';
+    return String(Math.max(0, parseInt(v, 10))).padStart(2, '0');
+  }
+  function fileTitle() {
+    var t = $('docTitle').value.trim().replace(/[\\\/:*?"<>|\r\n\t]/g, '').replace(/\s+/g, '_').slice(0, 40);
+    var no = docNoText();
+    if (!t) t = '台本画像';
+    return no ? no + '_' + t : t;
+  }
+
+  // ---- ZIP（圧縮なし）を作る ----
+  var CRC_TABLE = (function () {
+    var t = new Uint32Array(256);
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+  function crc32(buf) {
+    var c = 0xFFFFFFFF;
+    for (var i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+  function makeZip(files) { // files: [{name, data(Uint8Array), date}]
+    var enc = new TextEncoder(), parts = [], central = [], offset = 0;
+    files.forEach(function (f) {
+      var name = enc.encode(f.name), crc = crc32(f.data), d = f.date;
+      var time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+      var date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+      var h = new DataView(new ArrayBuffer(30));
+      h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true);
+      h.setUint16(8, 0, true); h.setUint16(10, time, true); h.setUint16(12, date, true);
+      h.setUint32(14, crc, true); h.setUint32(18, f.data.length, true); h.setUint32(22, f.data.length, true);
+      h.setUint16(26, name.length, true); h.setUint16(28, 0, true);
+      parts.push(new Uint8Array(h.buffer), name, f.data);
+      var cd = new DataView(new ArrayBuffer(46));
+      cd.setUint32(0, 0x02014b50, true); cd.setUint16(4, 20, true); cd.setUint16(6, 20, true);
+      cd.setUint16(8, 0x0800, true); cd.setUint16(10, 0, true); cd.setUint16(12, time, true); cd.setUint16(14, date, true);
+      cd.setUint32(16, crc, true); cd.setUint32(20, f.data.length, true); cd.setUint32(24, f.data.length, true);
+      cd.setUint16(28, name.length, true); cd.setUint32(42, offset, true);
+      central.push(new Uint8Array(cd.buffer), name);
+      offset += 30 + name.length + f.data.length;
+    });
+    var cdSize = central.reduce(function (s, p) { return s + p.length; }, 0);
+    var end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+    end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+    return new Blob(parts.concat(central, [new Uint8Array(end.buffer)]), { type: 'application/zip' });
+  }
+
+  function canvasToBlob(cv) {
+    return new Promise(function (res) { cv.toBlob(res, 'image/jpeg', 0.92); });
+  }
+  function download(blob, name) {
+    var a = document.createElement('a');
+    a.download = name;
+    a.href = URL.createObjectURL(blob);
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 10000);
+  }
+  function pad3(n) { return String(n).padStart(3, '0'); }
+  function stamp(d) {
+    var p = function (n) { return String(n).padStart(2, '0'); };
+    return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '_' + p(d.getHours()) + p(d.getMinutes());
+  }
+
+  // フォントを先に読み込んでおく（ネットにつながっていなければ端末の文字になる）
+  async function prepareFont(list) {
+    var f = currentFont();
+    var allText = '';
+    list.forEach(function (pg) { pg.forEach(function (l) { allText += l.who + l.text; }); });
+    try { await document.fonts.load(f.weight + ' 100px ' + f.family, allText); } catch (e) {}
+  }
+
+  function makeCanvas() {
+    var cv = document.createElement('canvas');
+    cv.width = IMG_W; cv.height = IMG_H;
+    return cv;
+  }
+
+  // 全ページをまとめて保存
+  async function exportAll() {
+    var list = splitPages();
+    var msg = $('jpgMsg');
+    if (list.length === 0) { alert('台本が空です。先に台本を貼り付けてください。'); return; }
+    ensureColors(speakers(list));
+    $('jpgBtn').disabled = true;
+    try {
+      await prepareFont(list);
+      var cv = makeCanvas(), ctx = cv.getContext('2d');
+      var files = [], base = new Date();
+      for (var i = 0; i < list.length; i++) {
+        msg.textContent = '画像を作っています… ' + (i + 1) + ' / ' + list.length;
+        drawPage(ctx, list[i], i + 1, list.length);
+        var data = new Uint8Array(await (await canvasToBlob(cv)).arrayBuffer());
+        // 日付順に並べるアプリでも順番どおりになるよう、2秒ずつずらす
+        files.push({ name: fileTitle() + '_' + pad3(i + 1) + '.jpg', data: data, date: new Date(base.getTime() + i * 2000) });
+      }
+      var name = fileTitle() + '_' + stamp(base) + '.zip';
+      download(makeZip(files), name);
+      msg.textContent = list.length + '枚の画像を保存しました（' + name + '）';
+    } catch (e) {
+      msg.textContent = '保存に失敗しました：' + e.message;
+    }
+    $('jpgBtn').disabled = false;
+  }
+
+  // 表示中のページだけ保存
+  async function exportOne() {
+    if (pages.length === 0) return;
+    var btn = $('oneJpgBtn');
+    btn.disabled = true;
+    try {
+      await prepareFont([pages[index]]);
+      var cv = makeCanvas();
+      drawPage(cv.getContext('2d'), pages[index], index + 1, pages.length);
+      download(await canvasToBlob(cv), fileTitle() + '_' + pad3(index + 1) + '.jpg');
+      btn.textContent = '保存しました';
+    } catch (e) {
+      btn.textContent = '保存に失敗';
+    }
+    setTimeout(function () { btn.textContent = 'この1枚を保存'; btn.disabled = false; }, 1500);
+  }
+
+  // ===== 操作 =====
+  var listTimer = null;
+  // ===== 行間 =====
+  function lineH() { return parseFloat($('lineH').value) || 1.35; }
+  function applyLineH() {
+    $('lineHVal').textContent = lineH().toFixed(2);
+    document.documentElement.style.setProperty('--lh', lineH());
+    if (stage.classList.contains('show')) fit();
+  }
+  $('lineH').value = load('daihon.lineH', '1.35');
+  $('lineH').addEventListener('input', function () { save('daihon.lineH', $('lineH').value); applyLineH(); });
+  applyLineH();
+
+  // ===== リアルタイム確認ウィンドウ =====
+  // JPG と同じ描き方で、いま編集しているページを小さく表示する
+  var pvIndex = 0, pvFollow = true, pvTimer = null;
+
+  // カーソルが何ページ目にあるかを調べる
+  function pageAtCursor() {
+    // カーソルより前の部分だけでページを数える
+    var n = splitPages(script.value.slice(0, script.selectionStart)).length;
+    return Math.max(0, n - 1);
+  }
+  function drawPreview() {
+    if ($('pv').classList.contains('hide')) return;
+    var list = splitPages();
+    var cv = $('pvCanvas'), ctx = cv.getContext('2d');
+    if (list.length === 0) {
+      ctx.fillStyle = '#000'; ctx.fillRect(0, 0, IMG_W, IMG_H);
+      ctx.fillStyle = '#666'; ctx.font = '700 60px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      try { ctx.letterSpacing = '0px'; } catch (e) {}
+      ctx.fillText('台本を入れると、ここに表示されます', IMG_W / 2, IMG_H / 2);
+      $('pvPos').textContent = '- / -';
+      return;
+    }
+    if (pvFollow && document.activeElement === script) pvIndex = pageAtCursor();
+    pvIndex = Math.max(0, Math.min(list.length - 1, pvIndex));
+    ensureColors(speakers(list));
+    drawPage(ctx, list[pvIndex], pvIndex + 1, list.length);
+    $('pvPos').textContent = (pvIndex + 1) + ' / ' + list.length;
+  }
+  function schedulePreview() {
+    clearTimeout(pvTimer);
+    pvTimer = setTimeout(drawPreview, 120);
+  }
+  // 編集画面で何か変わったら描き直す
+  ['input', 'change', 'click'].forEach(function (ev) { $('editor').addEventListener(ev, schedulePreview); });
+  script.addEventListener('keyup', function () { pvFollow = true; schedulePreview(); });
+  script.addEventListener('click', function () { pvFollow = true; });
+  $('pvPrev').addEventListener('click', function () { pvFollow = false; pvIndex--; drawPreview(); });
+  $('pvNext').addEventListener('click', function () { pvFollow = false; pvIndex++; drawPreview(); });
+  $('pvSize').addEventListener('click', function () {
+    var big = $('pv').classList.toggle('big');
+    $('pvSize').textContent = big ? '小さく' : '大きく';
+    save('daihon.pvBig', big ? '1' : '0');
+  });
+  function setPvOpen(open) {
+    $('pv').classList.toggle('hide', !open);
+    $('pvOpen').classList.toggle('show', !open);
+    save('daihon.pvOpen', open ? '1' : '0');
+    if (open) drawPreview();
+  }
+  $('pvClose').addEventListener('click', function () { setPvOpen(false); });
+  $('pvOpen').addEventListener('click', function () { setPvOpen(true); });
+  if (load('daihon.pvBig', '0') === '1') { $('pv').classList.add('big'); $('pvSize').textContent = '小さく'; }
+  setPvOpen(load('daihon.pvOpen', '1') === '1');
+  try { if (document.fonts) document.fonts.ready.then(drawPreview); } catch (e) {}
+
+  function onScriptChanged() {
+    save('daihon.index', '0'); updateCount();
+    clearTimeout(listTimer); listTimer = setTimeout(renderWhoList, 400);
+  }
+  script.addEventListener('input', function () { save('daihon.script', script.value); onScriptChanged(); });
+  $('docTitle').value = load('daihon.title', '');
+  $('docTitle').addEventListener('input', function () { save('daihon.title', $('docTitle').value); });
+  $('docNo').value = load('daihon.no', '');
+  $('docNo').addEventListener('input', function () { save('daihon.no', $('docNo').value); });
+  splitMode.addEventListener('change', function () { save('daihon.split', splitMode.value); updateSplitUI(); onScriptChanged(); });
+  markInput.addEventListener('input', function () { save('daihon.mark', markInput.value); onScriptChanged(); });
+  fontSel.addEventListener('change', function () { save('daihon.font', fontSel.value); applyFont(); });
+  weightSl.addEventListener('input', function () { save('daihon.weight', weightSl.value); applyFont(); });
+  strokeSl.addEventListener('input', function () { save('daihon.strokeLv', strokeSl.value); applyFont(); });
+  function updateWhoBtn() { $('whoBtn').textContent = showWho.checked ? '名前：表示' : '名前：非表示'; }
+  showWho.addEventListener('change', function () { save('daihon.showWho', showWho.checked ? '1' : '0'); updateWhoBtn(); });
+  $('whoBtn').addEventListener('click', function (e) {
+    e.stopPropagation();
+    showWho.checked = !showWho.checked;
+    save('daihon.showWho', showWho.checked ? '1' : '0');
+    updateWhoBtn();
+    render();
+  });
+  size.addEventListener('input', function () { setSize(parseInt(size.value, 10)); });
+  $('sizeDown').addEventListener('click', function () { setSize(parseInt(size.value, 10) - 10); });
+  $('sizeUp').addEventListener('click', function () { setSize(parseInt(size.value, 10) + 10); });
+  $('aDown').addEventListener('click', function (e) { e.stopPropagation(); bumpSize(-10); });
+  $('aUp').addEventListener('click', function (e) { e.stopPropagation(); bumpSize(10); });
+  $('zabuton').checked = load('daihon.zabuton', '1') === '1';
+  function applyZabuton() { stage.classList.toggle('zabuton', $('zabuton').checked); if (stage.classList.contains('show')) fit(); }
+  $('zabuton').addEventListener('change', function () { save('daihon.zabuton', $('zabuton').checked ? '1' : '0'); applyZabuton(); });
+  applyZabuton();
+  schedulePreview();
+  $('breakMode').value = load('daihon.break', 'phrase');
+  function applyBreak() { stage.classList.toggle('fill', $('breakMode').value === 'fill'); if (stage.classList.contains('show')) fit(); }
+  $('breakMode').addEventListener('change', function () { save('daihon.break', $('breakMode').value); applyBreak(); });
+  applyBreak();
+  $('autoMax').checked = load('daihon.auto', '1') === '1';
+  $('autoMax').addEventListener('change', function () { save('daihon.auto', $('autoMax').checked ? '1' : '0'); updateSizeUI(); });
+  updateSizeUI();
+  $('startBtn').addEventListener('click', start);
+  $('backBtn').addEventListener('click', function (e) { e.stopPropagation(); stop(); });
+  $('jpgBtn').addEventListener('click', exportAll);
+  $('oneJpgBtn').addEventListener('click', function (e) { e.stopPropagation(); exportOne(); });
+
+  // 入力ボタン（押してもキーボードが閉じないように mousedown を止める）
+  ['insMark', 'insParen', 'delName'].forEach(function (id) {
+    $(id).addEventListener('mousedown', function (e) { e.preventDefault(); });
+  });
+  $('insMark').addEventListener('click', function () {
+    var mark = markInput.value.trim() || '---';
+    var v = script.value, s = script.selectionStart, e = script.selectionEnd;
+    // 区切りは1行に単独で置く
+    var before = (s > 0 && v[s - 1] !== '\n') ? '\n' : '';
+    var after = (e < v.length && v[e] !== '\n') ? '\n' : (e === v.length ? '\n' : '');
+    insertText(before + mark + after);
+    if (splitMode.value !== 'mark') {
+      splitMode.value = 'mark'; save('daihon.split', 'mark'); updateSplitUI(); onScriptChanged();
+      toolMsg('区切りを入れたので、ページの区切り方を「指定した記号ごと」に切り替えました。');
+    }
+  });
+  $('insParen').addEventListener('click', function () {
+    var s = script.selectionStart, e = script.selectionEnd;
+    var sel = script.value.slice(s, e);
+    if (sel) insertText('（' + sel + '）');   // 選んだ文字をかっこで囲む
+    else insertText('（）', 1);               // かっこの間にカーソルを置く
+  });
+  function addName() {
+    var input = $('nameInput');
+    var n = input.value.trim().replace(/[\s：:「」]/g, '').slice(0, 12);
+    if (!n) { toolMsg('先に名前を入力してください。'); input.focus(); return; }
+    if (extraNames.indexOf(n) < 0) { extraNames.push(n); save('daihon.extraNames', JSON.stringify(extraNames)); }
+    input.value = '';
+    renderWhoList();
+    toolMsg('「' + n + '」のボタンを作りました。台本の行をタップしてから、名前のボタンを押してください。');
+  }
+  $('addName').addEventListener('click', addName);
+  $('nameInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); addName(); }
+  });
+  $('delName').addEventListener('click', function () { setLineName(''); });
+
+  // 画面タップ：右半分で次へ、左半分で前へ
+  var justSwiped = false;
+  lineBox.addEventListener('click', function (e) {
+    if (justSwiped) return;
+    var rect = lineBox.getBoundingClientRect();
+    go(e.clientX - rect.left > rect.width / 2 ? 1 : -1);
+  });
+
+  // スワイプ：左へ動かすと次へ、右へ動かすと前へ
+  var sx = 0, sy = 0, tracking = false;
+  lineBox.addEventListener('touchstart', function (e) {
+    if (e.touches.length !== 1) { tracking = false; return; }
+    tracking = true; sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+  }, { passive: true });
+  lineBox.addEventListener('touchend', function (e) {
+    if (!tracking) return;
+    tracking = false;
+    var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      go(dx < 0 ? 1 : -1);
+      justSwiped = true;
+      setTimeout(function () { justSwiped = false; }, 400);
+    }
+  });
+
+  // キーボード（パソコンで試すとき用）
+  document.addEventListener('keydown', function (e) {
+    if (!stage.classList.contains('show')) return;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ' || e.key === 'Enter') { e.preventDefault(); go(1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); go(-1); }
+    else if (e.key === 'Escape') stop();
+  });
+
+  window.addEventListener('resize', function () { if (stage.classList.contains('show')) fit(); });
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible' && stage.classList.contains('show')) keepAwake();
+  });
+  // フォントの読み込みが終わったら、大きさを合わせ直す
+  try { if (document.fonts) document.fonts.ready.then(function () { if (stage.classList.contains('show')) fit(); }); } catch (e) {}
+
+  sizeVal.textContent = size.value;
+  updateSplitUI();
+  updateWhoBtn();
+  applyFont();
+  updateCount();
+  renderWhoList();
+})();
+</script>
+</body>
+</html>
