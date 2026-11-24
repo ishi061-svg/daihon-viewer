@@ -13,9 +13,13 @@
     --bg: #f4f4f2;
     --card: #ffffff;
     --text: #1d1d1f;
-    --sub: #6b6b70;
+    --sub: #5f5f64;
     --accent: #2f6fde;
     --line: #dcdcdf;
+    /* 文字の大きさは3種類だけ：見出し・本文・補足 */
+    --fs-h: 20px;
+    --fs-b: 17px;
+    --fs-s: 14px;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; }
@@ -26,40 +30,97 @@
   }
 
   /* ===== 編集画面 ===== */
-  #editor { max-width: 900px; margin: 0 auto; padding: 20px 16px 40px; }
-  h1 { font-size: 24px; margin: 4px 0 4px; }
-  .lead { color: var(--sub); margin: 0 0 16px; font-size: 15px; line-height: 1.6; }
+  #editor { max-width: 1240px; margin: 0 auto; padding: 20px 16px 120px; font-size: var(--fs-b); }
+  .head { margin-bottom: 20px; }
+  h1 { font-size: var(--fs-h); margin: 4px 0 4px; }
+  .lead { color: var(--sub); margin: 0; line-height: 1.6; display: flex; align-items: center; flex-wrap: wrap; }
+  /* 広い画面：左に入力、右に確認ウィンドウ */
+  @media (min-width: 1000px) {
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 24px; align-items: start; }
+    body.pvbig .layout { grid-template-columns: minmax(0, 1fr) 620px; }
+    #side { position: sticky; top: 16px; }
+  }
+  @media (max-width: 999px) { #side { display: none; } #pvSize { display: none; } }
+  /* 手順の見出し */
+  .step { margin-bottom: 28px; }
+  .step h2 { display: flex; align-items: center; gap: 10px; font-size: var(--fs-h); margin: 0 0 10px; }
+  .num {
+    flex: none; width: 32px; height: 32px; border-radius: 50%;
+    background: var(--accent); color: #fff; font-size: var(--fs-b);
+    display: inline-flex; align-items: center; justify-content: center;
+  }
   .card {
     background: var(--card); border: 1px solid var(--line); border-radius: 12px;
     padding: 16px; margin-bottom: 16px;
   }
-  label.title { display: block; font-weight: bold; margin-bottom: 8px; }
+  .sub + .sub { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 12px; }
+  .title { display: flex; align-items: center; font-weight: bold; min-height: 44px; margin-bottom: 4px; }
+  .fname { margin: 14px 0 4px; }
+  .body { margin: 0; line-height: 1.6; }
   textarea {
-    width: 100%; min-height: 40vh; font-size: 18px; line-height: 1.7;
+    width: 100%; min-height: 40vh; font-size: var(--fs-b); line-height: 1.8;
     padding: 12px; border: 1px solid var(--line); border-radius: 8px;
     font-family: inherit; resize: vertical; color: var(--text); background: #fff;
   }
-  .hint { font-size: 14px; color: var(--sub); margin-top: 8px; line-height: 1.6; }
+  .hint { font-size: var(--fs-s); color: var(--sub); margin: 8px 0 0; line-height: 1.7; }
+  .hint:empty { display: none; }
+  /* 「？」で開く説明 */
+  .hint.box { background: #eef3fc; color: #33363d; border-radius: 8px; padding: 10px 12px; margin: 0 0 10px; }
+  .help {
+    width: 44px; height: 44px; padding: 0; border: none; background: none; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .help i {
+    font-style: normal; font-weight: bold; font-size: var(--fs-s); color: var(--accent);
+    width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .help[aria-expanded="true"] i { background: var(--accent); color: #fff; }
+  .check { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+  .check input { width: 20px; height: 20px; }
+  /* 詳しい設定（たたんでおく） */
+  details.more { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 4px; }
+  details.more > summary {
+    min-height: 44px; display: flex; align-items: center; gap: 8px;
+    font-weight: bold; color: var(--accent); cursor: pointer; list-style: none;
+  }
+  details.more > summary::-webkit-details-marker { display: none; }
+  details.more > summary::before { content: "▸"; transition: transform .15s; }
+  details.more[open] > summary::before { transform: rotate(90deg); }
   .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .row .s { font-size: var(--fs-s); }
   input[type=range] { flex: 1; min-width: 160px; height: 32px; }
-  input[type=text] { font: inherit; font-size: 18px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; width: 140px; }
+  input[type=text], input[type=number] { font: inherit; font-size: var(--fs-b); padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; width: 140px; min-height: 44px; }
   .sizeVal { min-width: 64px; text-align: right; font-weight: bold; }
-  select { font: inherit; font-size: 17px; padding: 10px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--text); width: 100%; }
+  select { font: inherit; font-size: var(--fs-b); padding: 10px; border-radius: 8px; border: 1px solid var(--line); background: #fff; color: var(--text); width: 100%; min-height: 44px; }
   button {
-    font: inherit; font-size: 18px; border-radius: 10px; border: 1px solid var(--line);
-    background: #fff; color: var(--text); padding: 12px 18px; cursor: pointer;
+    font: inherit; font-size: var(--fs-b); border-radius: 10px; border: 1px solid var(--line);
+    background: #fff; color: var(--text); padding: 10px 16px; cursor: pointer; min-height: 44px;
   }
   button:disabled { opacity: .5; }
   button.primary { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: bold; }
-  .start { width: 100%; font-size: 22px; padding: 18px; }
-  .count { color: var(--sub); font-size: 15px; }
+  button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible {
+    outline: 3px solid var(--accent); outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  /* 画面の下に固定するバー（ページ数＋表示を始める） */
+  #dock {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+    background: rgba(255,255,255,.97); border-top: 1px solid var(--line);
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  }
+  #dock .in { max-width: 1240px; margin: 0 auto; display: flex; align-items: center; justify-content: flex-end; gap: 16px; }
+  .count { color: var(--sub); font-size: var(--fs-b); }
+  .start { font-size: var(--fs-h); padding: 12px 32px; min-width: 260px; }
+  @media (max-width: 600px) { .start { flex: 1; min-width: 0; } }
+  body.playing #dock { display: none; }
   /* 台本の入力ボタン */
   .tools { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
   #nameBtns { margin-bottom: 0; }
-  button.tool { font-size: 17px; padding: 10px 14px; }
+  button.tool { font-size: var(--fs-b); padding: 8px 14px; }
   button.tool.name { background: #000; font-weight: bold; border-color: #000; border-radius: 10px 0 0 10px; }
   .namechip { display: inline-flex; }
-  button.tool.namex { border-radius: 0 10px 10px 0; border-left: none; padding: 10px 12px; color: #888; }
+  button.tool.namex { border-radius: 0 10px 10px 0; border-left: none; min-width: 44px; padding: 8px 12px; color: var(--sub); }
 
   /* 見本（黒地に実際の文字） */
   .sample {
@@ -75,7 +136,7 @@
   .who-row:first-child { border-top: none; }
   .who-name {
     min-width: 120px; background: #000; border-radius: 8px; padding: 6px 12px;
-    font-size: 22px;
+    font-size: var(--fs-h);
   }
   .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
   .sw {
@@ -87,7 +148,7 @@
     content: "✓"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     color: #000; font-weight: bold; font-size: 20px;
   }
-  .empty { color: var(--sub); font-size: 15px; }
+  .empty { color: var(--sub); font-size: var(--fs-s); }
 
   /* 表示する文字の共通スタイル（フォントは JS で切り替え） */
   .big {
@@ -121,27 +182,27 @@
   /* 日本語を文節（意味のまとまり）で改行する。対応していないブラウザでは普通の改行になる */
   #inner .lineText { white-space: pre-wrap; word-break: auto-phrase; overflow-wrap: anywhere; line-height: var(--lh, 1.35); }
   /* リアルタイム確認ウィンドウ */
-  #pv {
-    position: fixed; right: 12px; bottom: 12px; z-index: 50;
-    width: min(420px, 46vw); background: #222; border-radius: 10px;
-    box-shadow: 0 6px 24px rgba(0,0,0,.35); overflow: hidden;
-  }
-  #pv.big { width: min(760px, 92vw); }
+  /* 広い画面では右の列、狭い画面では台本の入力欄の下に置く（JS で移動） */
+  #pv { background: #222; border-radius: 10px; overflow: hidden; margin-top: 12px; }
+  #side #pv, #side #pvOpen { margin-top: 0; }
   #pv.hide { display: none; }
   #pvHead {
     display: flex; align-items: center; justify-content: space-between; gap: 6px;
-    padding: 4px 6px; color: #ccc; font-size: 14px;
+    padding: 6px 8px; color: #ddd; font-size: var(--fs-s);
   }
-  #pvHead button { background: #333; color: #ddd; border-color: #444; font-size: 14px; padding: 4px 10px; border-radius: 6px; }
-  #pvHead .g { display: flex; gap: 4px; align-items: center; }
+  #pvHead button {
+    background: #333; color: #eee; border-color: #555; font-size: var(--fs-s);
+    min-width: 44px; min-height: 44px; padding: 0 12px; border-radius: 8px;
+  }
+  #pvHead #pvClose { font-size: var(--fs-b); }
+  #pvHead .g { display: flex; gap: 6px; align-items: center; }
   #pvCanvas { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; background: #000; }
   #pvOpen {
-    position: fixed; right: 12px; bottom: 12px; z-index: 50; display: none;
-    background: #222; color: #eee; border-color: #444; font-size: 15px; padding: 10px 14px;
+    display: none; width: 100%; margin-top: 12px;
+    background: #222; color: #eee; border-color: #444;
   }
   #pvOpen.show { display: block; }
   body.playing #pv, body.playing #pvOpen { display: none; }
-  #editor { padding-bottom: 50vh; }
   /* 左右の端まで詰める：どこでも改行（句読点は行頭に来ない） */
   #stage.fill #inner .lineText { word-break: break-all; line-break: strict; }
   /* 縦向きのときだけ出す案内 */
@@ -168,161 +229,215 @@
 
 <!-- 編集画面 -->
 <div id="editor">
-  <h1>台本表示ツール</h1>
-  <p class="lead">台本を貼り付けて「表示を始める」を押すと、1ページずつ大きく表示されます。<br>
-  画面の右側をタップ（または左へスワイプ）で次へ、左側をタップ（または右へスワイプ）で前へ戻ります。</p>
+  <header class="head">
+    <h1>台本表示ツール</h1>
+    <div class="lead">
+      <span>台本を貼り付けて「表示を始める」を押すと、1ページずつ大きく表示されます。</span>
+      <button type="button" class="help" aria-controls="hLead" aria-expanded="false" aria-label="めくり方の説明"><i>？</i></button>
+    </div>
+    <p class="hint box" id="hLead" hidden>表示中は、画面の右側をタップ（または左へスワイプ）で次へ、左側をタップ（または右へスワイプ）で前へ戻ります。</p>
+  </header>
 
-  <div class="card">
-    <label class="title" for="docTitle">番号とタイトル</label>
-    <div class="row" style="gap:8px; margin-bottom:6px; flex-wrap:nowrap;">
-      <input type="number" id="docNo" placeholder="番号" min="0" max="999" inputmode="numeric" style="width:90px; font:inherit; font-size:18px; padding:8px 10px; border:1px solid var(--line); border-radius:8px;" aria-label="番号">
-      <input type="text" id="docTitle" placeholder="例：第1話 出会い" maxlength="40" style="flex:1; width:auto; min-width:0;">
-    </div>
-    <p class="hint" style="margin:0 0 14px;">画像（JPG）で保存するとき、ファイル名と画像の左上に「番号＋タイトル」が入ります。<br>
-    番号は「01」「02」…のように2けたにそろえるので、ファイルを名前順に並べると台本の順番どおりになります。番号は空でもかまいません。</p>
-    <label class="title" for="script">台本</label>
-    <div class="tools" id="tools">
-      <button type="button" class="tool" id="insMark">区切り</button>
-      <button type="button" class="tool" id="insParen">（ ）</button>
-      <span id="nameBtns" class="tools"></span>
-      <button type="button" class="tool" id="delName">この行の名前を外す</button>
-    </div>
-    <div class="row" style="gap:8px; margin-bottom:8px;">
-      <input type="text" id="nameInput" placeholder="名前を入力" maxlength="12" style="flex:1; min-width:140px; max-width:260px;">
-      <button type="button" class="tool" id="addName">名前を追加</button>
-    </div>
-    <p class="hint" style="margin:0 0 8px;" id="toolMsg">名前を入力して「名前を追加」を押すと、その名前のボタンができます。<br>
-    名前のボタンを押すと、カーソル（文字を入れる位置）のある行の先頭に「名前：」が入ります。<br>
-    名前の横の「✕」で、その名前を消せます。</p>
-    <textarea id="script" placeholder="ここに台本を貼り付けます。&#10;&#10;「名前：セリフ」と書くと、人ごとに色を変えられます。&#10;山田：こんにちは、山田です。&#10;鈴木：本日はよろしくお願いします。&#10;&#10;名前「セリフ」の書き方でもOKです。&#10;鈴木「よろしくね」"></textarea>
-    <div class="row" style="margin-top:8px;">
-      <span class="count" id="count">ページ数：0</span>
-    </div>
-    <p class="hint">入力した台本は、このブラウザに自動で保存されます。次に開いたときもそのまま残ります。</p>
-  </div>
+  <div class="layout">
+    <main class="steps">
 
-  <div class="card">
-    <label class="title" for="splitMode">ページの区切り方</label>
-    <select id="splitMode">
-      <option value="line">1行ごとに1ページ</option>
-      <option value="blank">空行（何も書いていない行）ごとに1ページ</option>
-      <option value="mark">指定した記号ごとに1ページ</option>
-    </select>
-    <div class="row" id="markRow" style="margin-top:10px;">
-      <span>区切りの記号：</span>
-      <input type="text" id="mark" value="---">
-    </div>
-    <p class="hint" id="markHint">
-      例：区切りの記号を「---」にした場合<br>
-      山田：こんにちは。<br>
-      鈴木：よろしくね。<br>
-      ---<br>
-      山田：では始めます。<br>
-      → 「---」の上の2行が1ページ目、下の1行が2ページ目になります。<br>
-      1ページに何人かのセリフがあっても、それぞれの人の色で表示されます。
-    </p>
-  </div>
+      <!-- ① 台本を入れる -->
+      <section class="step" aria-labelledby="st1">
+        <h2 id="st1"><span class="num">1</span>台本を入れる</h2>
+        <div class="card">
+          <div class="title">
+            <label for="script">台本</label>
+            <button type="button" class="help" aria-controls="hScript" aria-expanded="false" aria-label="台本の入れ方の説明"><i>？</i></button>
+          </div>
+          <div class="hint box" id="hScript" hidden>
+            「名前：セリフ」または 名前「セリフ」 と書くと、人ごとに色を変えられます。<br>
+            名前を入力して「名前を追加」を押すと、その名前のボタンができます。名前のボタンを押すと、カーソル（文字を入れる位置）のある行の先頭に「名前：」が入ります。<br>
+            名前の横の「✕」で、その名前を消せます。
+          </div>
+          <div class="tools" id="tools">
+            <button type="button" class="tool" id="insMark">区切り</button>
+            <button type="button" class="tool" id="insParen">（ ）</button>
+            <span id="nameBtns" class="tools"></span>
+            <button type="button" class="tool" id="delName">この行の名前を外す</button>
+          </div>
+          <div class="row" style="gap:8px; margin-bottom:8px;">
+            <input type="text" id="nameInput" placeholder="名前を入力" maxlength="12" style="flex:1; min-width:140px; max-width:260px;" aria-label="追加する名前">
+            <button type="button" class="tool" id="addName">名前を追加</button>
+          </div>
+          <p class="hint" style="margin:0 0 8px;" id="toolMsg" aria-live="polite"></p>
+          <textarea id="script" placeholder="ここに台本を貼り付けます。&#10;&#10;「名前：セリフ」と書くと、人ごとに色を変えられます。&#10;山田：こんにちは、山田です。&#10;鈴木：本日はよろしくお願いします。&#10;&#10;名前「セリフ」の書き方でもOKです。&#10;鈴木「よろしくね」"></textarea>
+          <p class="hint">入力した台本は、このブラウザに自動で保存されます。</p>
+          <div id="pvNarrow"></div>
+        </div>
+      </section>
 
-  <div class="card">
-    <label class="title">人ごとの色</label>
-    <div id="whoList"></div>
-    <p class="hint">黒い背景で見やすい明るい色だけを用意しています。<br>
-    名前のない行（ト書き・ナレーションなど）は白で表示します。<br>
-    ただし、名前つきの行のすぐ下に名前なしの行が続くときは、同じ人のセリフの続きとして同じ色にします（「（」で始まる行は除く）。</p>
-    <label style="font-size:16px; display:block; margin-top:6px;"><input type="checkbox" id="showWho" checked> 名前も表示する</label>
-    <label style="font-size:16px; display:block; margin-top:6px;"><input type="checkbox" id="zabuton" checked> 名前に座布団を敷く（その人の色の板の上に、黒い文字で名前を出す）</label>
-  </div>
+      <!-- ② 見た目を決める -->
+      <section class="step" aria-labelledby="st2">
+        <h2 id="st2"><span class="num">2</span>見た目を決める</h2>
+        <div class="card">
+          <div class="sub">
+            <div class="title">
+              <label for="splitMode">ページの区切り方</label>
+              <button type="button" class="help" aria-controls="hSplit" aria-expanded="false" aria-label="区切り方の説明"><i>？</i></button>
+            </div>
+            <div class="hint box" id="hSplit" hidden>
+              例：区切りの記号を「---」にした場合<br>
+              山田：こんにちは。<br>
+              鈴木：よろしくね。<br>
+              ---<br>
+              山田：では始めます。<br>
+              → 「---」の上の2行が1ページ目、下の1行が2ページ目になります。<br>
+              1ページに何人かのセリフがあっても、それぞれの人の色で表示されます。
+            </div>
+            <select id="splitMode">
+              <option value="line">1行ごとに1ページ</option>
+              <option value="blank">空行（何も書いていない行）ごとに1ページ</option>
+              <option value="mark">指定した記号ごとに1ページ</option>
+            </select>
+            <div class="row" id="markRow" style="margin-top:10px;">
+              <label for="mark">区切りの記号：</label>
+              <input type="text" id="mark" value="---">
+            </div>
+          </div>
 
-  <div class="card">
-    <label class="title" for="font">文字の形と太さ</label>
-    <select id="font">
-      <option value="noto">極太ゴシック（おすすめ：いちばん太い）</option>
-      <option value="ud">UDゴシック（読みまちがえにくい形）</option>
-      <option value="sys">端末の標準ゴシック（極太）</option>
-    </select>
-    <div style="margin-top:14px;">
-      <div style="font-size:16px; margin-bottom:4px;">文字の太さ</div>
-      <div class="row">
-        <span style="font-size:14px;">細め</span>
-        <input type="range" id="weight" min="1" max="5" step="1" value="5">
-        <span style="font-size:14px;">極太</span>
-        <span class="sizeVal" id="weightVal"></span>
+          <div class="sub">
+            <div class="title">
+              <span>人ごとの色</span>
+              <button type="button" class="help" aria-controls="hColor" aria-expanded="false" aria-label="色の説明"><i>？</i></button>
+            </div>
+            <div class="hint box" id="hColor" hidden>
+              黒い背景で見やすい明るい色だけを用意しています。<br>
+              名前のない行（ト書き・ナレーションなど）は白で表示します。ただし、名前つきの行のすぐ下に名前なしの行が続くときは、同じ人のセリフの続きとして同じ色にします（「（」で始まる行は除く）。<br>
+              「座布団」は、その人の色の板の上に、黒い文字で名前を出す表示です。
+            </div>
+            <div id="whoList"></div>
+            <label class="check"><input type="checkbox" id="showWho" checked> 名前も表示する</label>
+            <label class="check"><input type="checkbox" id="zabuton" checked> 名前に座布団を敷く</label>
+          </div>
+
+          <div class="sub">
+            <div class="title">
+              <label for="font">文字の形と太さ</label>
+              <button type="button" class="help" aria-controls="hFont" aria-expanded="false" aria-label="文字の形と太さの説明"><i>？</i></button>
+            </div>
+            <div class="hint box" id="hFont" hidden>
+              つぶれるときは、まず「詳しい設定」のフチを「なし」に、それでもつぶれるなら太さを1段階下げます。<br>
+              「UDゴシック」は太さが2段階（ふつう・太字）しかありません。<br>
+              「極太ゴシック」「UDゴシック」はネットにつながっているときだけ使えます。つながっていないときは、自動で端末の標準ゴシックになります。
+            </div>
+            <select id="font">
+              <option value="noto">極太ゴシック（おすすめ：いちばん太い）</option>
+              <option value="ud">UDゴシック（読みまちがえにくい形）</option>
+              <option value="sys">端末の標準ゴシック（極太）</option>
+            </select>
+            <div class="fname"><label for="weight">文字の太さ</label></div>
+            <div class="row">
+              <span class="s">細め</span>
+              <input type="range" id="weight" min="1" max="5" step="1" value="5">
+              <span class="s">極太</span>
+              <span class="sizeVal" id="weightVal"></span>
+            </div>
+            <div class="sample" id="sample"></div>
+            <p class="hint">見本の「願」「驚」「鬱」のような画数の多い漢字がつぶれていないか確かめてください。</p>
+          </div>
+
+          <details class="more" id="more">
+            <summary>詳しい設定（フチ・文字の大きさ・行間・改行）</summary>
+            <div class="fname"><label for="stroke">フチ（線をさらに太く見せる）</label></div>
+            <div class="row">
+              <span class="s">なし</span>
+              <input type="range" id="stroke" min="0" max="4" step="1" value="0">
+              <span class="s">太い</span>
+              <span class="sizeVal" id="strokeVal"></span>
+            </div>
+
+            <div class="fname"><label for="size">文字の大きさ</label></div>
+            <label class="check"><input type="checkbox" id="autoMax" checked> 画面いっぱいに自動で大きくする（おすすめ）</label>
+            <div class="row" id="manualRow">
+              <button type="button" id="sizeDown">小さく</button>
+              <input type="range" id="size" min="30" max="600" step="5" value="90">
+              <button type="button" id="sizeUp">大きく</button>
+              <span class="sizeVal" id="sizeVal">90</span>
+            </div>
+            <p class="hint" id="sizeHint"></p>
+
+            <div class="fname"><label for="lineH">行間（行と行のすき間）</label></div>
+            <div class="row">
+              <span class="s">せまい</span>
+              <input type="range" id="lineH" min="1.0" max="1.8" step="0.05" value="1.35">
+              <span class="s">広い</span>
+              <span class="sizeVal" id="lineHVal">1.35</span>
+            </div>
+            <p class="hint">せまくすると、そのぶん文字を大きくできます。1.0 は行どうしがほぼくっつきます。</p>
+
+            <div class="fname"><label for="breakMode">改行のしかた</label></div>
+            <select id="breakMode">
+              <option value="phrase">言葉の切れ目で改行（読みやすい）</option>
+              <option value="fill">左右の端まで詰める（文字がいちばん大きくなる）</option>
+            </select>
+            <p class="hint">「左右の端まで詰める」にすると、言葉の途中でも改行します（例：「終わら／ない」）。ただし「、」「。」「！」などが行の先頭に来ないようにはしています。</p>
+          </details>
+        </div>
+      </section>
+
+      <!-- ③ 表示する／画像で保存 -->
+      <section class="step" aria-labelledby="st3">
+        <h2 id="st3"><span class="num">3</span>表示する／画像で保存</h2>
+        <div class="card">
+          <div class="sub">
+            <p class="body">画面の下の「表示を始める」を押すと、全画面の表示に切り替わります。</p>
+          </div>
+          <div class="sub">
+            <div class="title">
+              <span>画像（JPG）で保存</span>
+              <button type="button" class="help" aria-controls="hJpg" aria-expanded="false" aria-label="画像で保存の説明"><i>？</i></button>
+            </div>
+            <div class="hint box" id="hJpg" hidden>
+              1ページを横長（16:9）の画像1枚にして保存します。写真アプリなどで横にめくれば、このツールが開けない機器でも使えます。色・フォント・太さ・フチ・名前の表示は、いまの設定がそのまま使われます。<br>
+              ZIP（複数のファイルを1つにまとめたもの）で保存されます。タブレットのファイルアプリで開いて「展開」すると、画像が取り出せます。<br>
+              番号は「01」「02」…のように2けたにそろえるので、ファイルを名前順に並べると台本の順番どおりになります。画像の名前は「01_タイトル_001.jpg」「01_タイトル_002.jpg」… の順番になります（番号が空なら「タイトル_001.jpg」、タイトルも空なら「台本画像_001.jpg」…）。<br>
+              1ページだけ保存したいときは、表示中に下のバーの「この1枚を保存」を押します。
+            </div>
+            <div class="fname"><label for="docTitle">番号とタイトル（ファイル名と画像の左上に入ります。空でもかまいません）</label></div>
+            <div class="row" style="gap:8px; margin-bottom:12px; flex-wrap:nowrap;">
+              <input type="number" id="docNo" placeholder="番号" min="0" max="999" inputmode="numeric" style="width:90px;" aria-label="番号">
+              <input type="text" id="docTitle" placeholder="例：第1話 出会い" maxlength="40" style="flex:1; width:auto; min-width:0;">
+            </div>
+            <button type="button" id="jpgBtn" style="width:100%;">全ページをまとめて保存（ZIPファイル）</button>
+            <p class="hint" id="jpgMsg" aria-live="polite"></p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- リアルタイム確認ウィンドウ（狭い画面では台本の入力欄の下へ移す） -->
+    <aside id="side" aria-label="確認ウィンドウ">
+      <div id="pv">
+        <div id="pvHead">
+          <span>確認　<span id="pvPos">- / -</span></span>
+          <div class="g">
+            <button type="button" id="pvPrev" aria-label="前のページ">◀</button>
+            <button type="button" id="pvNext" aria-label="次のページ">▶</button>
+            <button type="button" id="pvSize">大きく</button>
+            <button type="button" id="pvClose" aria-label="確認ウィンドウを閉じる">✕</button>
+          </div>
+        </div>
+        <canvas id="pvCanvas" width="1920" height="1080"></canvas>
       </div>
-    </div>
-    <div style="margin-top:8px;">
-      <div style="font-size:16px; margin-bottom:4px;">フチ（線をさらに太く見せる）</div>
-      <div class="row">
-        <span style="font-size:14px;">なし</span>
-        <input type="range" id="stroke" min="0" max="4" step="1" value="0">
-        <span style="font-size:14px;">太い</span>
-        <span class="sizeVal" id="strokeVal"></span>
-      </div>
-    </div>
-    <div class="sample" id="sample"></div>
-    <p class="hint">見本の「願」「驚」「鬱」のような画数の多い漢字がつぶれていないか見ながら調整してください。<br>
-    つぶれるときは、まずフチを「なし」に、それでもつぶれるなら太さを1段階下げます。<br>
-    「UDゴシック」は太さが2段階（ふつう・太字）しかありません。<br>
-    「極太ゴシック」「UDゴシック」はネットにつながっているときだけ使えます。つながっていないときは、自動で端末の標準ゴシックになります。</p>
+      <button type="button" id="pvOpen">確認ウィンドウを開く</button>
+    </aside>
   </div>
+</div>
 
-  <div class="card">
-    <label class="title" for="size">文字の大きさ</label>
-    <label style="font-size:17px; display:block; margin-bottom:10px;"><input type="checkbox" id="autoMax" checked> 画面いっぱいに自動で大きくする（おすすめ）</label>
-    <div class="row" id="manualRow">
-      <button type="button" id="sizeDown">小さく</button>
-      <input type="range" id="size" min="30" max="600" step="5" value="90">
-      <button type="button" id="sizeUp">大きく</button>
-      <span class="sizeVal" id="sizeVal">90</span>
-    </div>
-    <p class="hint" id="sizeHint"></p>
-    <div style="font-size:16px; margin:14px 0 4px;">行間（行と行のすき間）</div>
-    <div class="row">
-      <span style="font-size:14px;">せまい</span>
-      <input type="range" id="lineH" min="1.0" max="1.8" step="0.05" value="1.35">
-      <span style="font-size:14px;">広い</span>
-      <span class="sizeVal" id="lineHVal">1.35</span>
-    </div>
-    <p class="hint" style="margin-top:2px;">せまくすると、そのぶん文字を大きくできます。1.0 は行どうしがほぼくっつきます。</p>
-    <div style="font-size:16px; margin:14px 0 4px;">改行のしかた</div>
-    <select id="breakMode">
-      <option value="phrase">言葉の切れ目で改行（読みやすい）</option>
-      <option value="fill">左右の端まで詰める（文字がいちばん大きくなる）</option>
-    </select>
-    <p class="hint">「左右の端まで詰める」にすると、言葉の途中でも改行します（例：「終わら／ない」）。<br>
-    ただし「、」「。」「！」などが行の先頭に来ないようにはしています。</p>
-  </div>
-
-  <button type="button" class="primary start" id="startBtn">表示を始める</button>
-
-  <div class="card" style="margin-top:16px;">
-    <label class="title">画像（JPG）で保存</label>
-    <p class="hint" style="margin-top:0;">1ページを横長（16:9）の画像1枚にして保存します。<br>
-    写真アプリなどで横にめくれば、このツールが開けない機器でも使えます。<br>
-    色・フォント・太さ・フチ・名前の表示は、いまの設定がそのまま使われます。</p>
-    <button type="button" id="jpgBtn" style="width:100%;">全ページをまとめて保存（ZIPファイル）</button>
-    <p class="hint" id="jpgMsg"></p>
-    <p class="hint">ZIP（複数のファイルを1つにまとめたもの）で保存されます。タブレットのファイルアプリで開いて「展開」すると、画像が取り出せます。<br>
-    画像の名前は「01_タイトル_001.jpg」「01_タイトル_002.jpg」… の順番になります（番号が空なら「タイトル_001.jpg」、タイトルも空なら「台本画像_001.jpg」…）。<br>
-    1ページだけ保存したいときは、表示中に下のバーの「この1枚を保存」を押します。</p>
+<!-- 画面の下に固定するバー -->
+<div id="dock">
+  <div class="in">
+    <span class="count" id="count">ページ数：0</span>
+    <button type="button" class="primary start" id="startBtn">表示を始める</button>
   </div>
 </div>
 
 <!-- 表示画面 -->
-<!-- リアルタイム確認ウィンドウ -->
-<div id="pv">
-  <div id="pvHead">
-    <span>確認　<span id="pvPos">- / -</span></span>
-    <div class="g">
-      <button type="button" id="pvPrev" aria-label="前のページ">◀</button>
-      <button type="button" id="pvNext" aria-label="次のページ">▶</button>
-      <button type="button" id="pvSize">大きく</button>
-      <button type="button" id="pvClose" aria-label="確認ウィンドウを閉じる">✕</button>
-    </div>
-  </div>
-  <canvas id="pvCanvas" width="1920" height="1080"></canvas>
-</div>
-<button type="button" id="pvOpen">確認ウィンドウを開く</button>
-
 <div id="stage">
   <div id="tapHelp">右側タップ／左へスワイプ：次へ　　左側タップ／右へスワイプ：前へ</div>
   <div id="rotateHint">タブレットを横向きにすると、もっと大きく表示できます</div>
@@ -583,7 +698,6 @@
   function updateSplitUI() {
     var isMark = splitMode.value === 'mark';
     $('markRow').style.display = isMark ? 'flex' : 'none';
-    $('markHint').style.display = isMark ? 'block' : 'none';
   }
 
   function updateCount() {
@@ -1055,7 +1169,7 @@
   $('pvPrev').addEventListener('click', function () { pvFollow = false; pvIndex--; drawPreview(); });
   $('pvNext').addEventListener('click', function () { pvFollow = false; pvIndex++; drawPreview(); });
   $('pvSize').addEventListener('click', function () {
-    var big = $('pv').classList.toggle('big');
+    var big = document.body.classList.toggle('pvbig');
     $('pvSize').textContent = big ? '小さく' : '大きく';
     save('daihon.pvBig', big ? '1' : '0');
   });
@@ -1067,8 +1181,31 @@
   }
   $('pvClose').addEventListener('click', function () { setPvOpen(false); });
   $('pvOpen').addEventListener('click', function () { setPvOpen(true); });
-  if (load('daihon.pvBig', '0') === '1') { $('pv').classList.add('big'); $('pvSize').textContent = '小さく'; }
+  if (load('daihon.pvBig', '0') === '1') { document.body.classList.add('pvbig'); $('pvSize').textContent = '小さく'; }
+  // 広い画面は右の列、狭い画面は台本の入力欄の下に確認ウィンドウを置く
+  var wideMq = window.matchMedia('(min-width: 1000px)');
+  function placePv() {
+    var home = wideMq.matches ? $('side') : $('pvNarrow');
+    if ($('pv').parentNode === home) return;
+    home.appendChild($('pv')); home.appendChild($('pvOpen'));
+  }
+  if (wideMq.addEventListener) wideMq.addEventListener('change', placePv); else wideMq.addListener(placePv);
+  window.addEventListener('resize', placePv);
+  placePv();
   setPvOpen(load('daihon.pvOpen', '1') === '1');
+
+  // 「？」を押すと説明を開く／閉じる
+  Array.prototype.forEach.call(document.querySelectorAll('.help'), function (b) {
+    b.addEventListener('click', function () {
+      var box = $(b.getAttribute('aria-controls'));
+      var open = box.hidden;
+      box.hidden = !open;
+      b.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+  });
+  // 「詳しい設定」を開いたかどうかを覚えておく
+  $('more').open = load('daihon.more', '0') === '1';
+  $('more').addEventListener('toggle', function () { save('daihon.more', $('more').open ? '1' : '0'); });
   try { if (document.fonts) document.fonts.ready.then(drawPreview); } catch (e) {}
 
   function onScriptChanged() {
